@@ -1,0 +1,232 @@
+:root {
+  --bg: #0f1218;
+  --panel: #171b24;
+  --panel-border: #232836;
+  --text: #e6e8ef;
+  --muted: #8a93a6;
+  --accent: #6ea8fe;
+  --good: #3ecf8e;
+  --good-bg: rgba(62, 207, 142, 0.12);
+  --bad: #ff6b6b;
+  --bad-bg: rgba(255, 107, 107, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+header {
+  margin-bottom: 28px;
+}
+
+header h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+header .subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.dropzone {
+  border: 2px dashed var(--panel-border);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--panel);
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: var(--accent);
+  background: #1b2030;
+}
+.dropzone.busy {
+  cursor: progress;
+  opacity: 0.7;
+}
+.dropzone .main {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 500;
+}
+.dropzone .hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.filename {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+.filename code {
+  background: var(--panel);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.error {
+  margin-top: 20px;
+  background: var(--bad-bg);
+  border: 1px solid var(--bad);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: var(--text);
+}
+.error pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 28px 0;
+}
+.summary > div {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.summary .label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.summary .value {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.panel h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.matrix th,
+.matrix td,
+.questions th,
+.questions td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  text-align: right;
+}
+.matrix th:first-child,
+.matrix td:first-child,
+.questions th:first-child,
+.questions td:first-child,
+.questions th:nth-child(2),
+.questions td:nth-child(2),
+.questions th:nth-child(3),
+.questions td:nth-child(3) {
+  text-align: left;
+}
+
+.matrix th,
+.questions th {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.matrix .row.subtle {
+  background: rgba(255, 255, 255, 0.015);
+}
+.matrix .row.emphasis {
+  background: rgba(110, 168, 254, 0.08);
+  font-weight: 600;
+}
+.matrix td.label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.cell.good,
+td.good {
+  color: var(--good);
+  background: var(--good-bg);
+}
+.cell.bad,
+td.bad {
+  color: var(--bad);
+  background: var(--bad-bg);
+}
+.cell.muted {
+  color: var(--muted);
+}
+
+.cell.inline {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.legend {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  margin-top: 10px;
+  padding: 0;
+  font-size: 13px;
+}
+.link:hover {
+  text-decoration: underline;
+}
