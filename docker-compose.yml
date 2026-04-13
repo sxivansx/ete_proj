@@ -1,0 +1,45 @@
+# Single-server deployment of the CO Attainment app.
+#
+# Two services on an internal docker network. Only the ``web`` container is
+# exposed to the host. nginx inside ``web`` proxies /api/* to ``api`` over the
+# docker DNS name — the API never binds to a host port.
+#
+# Bring up:        docker compose up -d --build
+# Tail logs:       docker compose logs -f
+# Tear down:       docker compose down
+#
+# Configure via ``.env`` (see .env.example).
+
+services:
+  api:
+    build:
+      context: ./backend
+    image: co-attainment-api:latest
+    container_name: co-attainment-api
+    restart: unless-stopped
+    expose:
+      - "8000"           # internal only — not published to the host
+    environment:
+      # Reserved for Phase 4 (DB) + later knobs. Safe to leave unset.
+      PYTHONUNBUFFERED: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/v1/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: ./frontend
+    image: co-attainment-web:latest
+    container_name: co-attainment-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    # Bind to all interfaces by default; override to 127.0.0.1:${PORT} via
+    # ``.env`` if there's a host-level reverse proxy in front (Caddy,
+    # Cloudflare Tunnel, existing nginx).
+    ports:
+      - "${PORT:-80}:80"

@@ -22,3 +22,6 @@ data/uploads/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+
+# Environment overrides — never commit real secrets or per-host config.
+.env
