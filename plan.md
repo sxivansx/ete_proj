@@ -238,16 +238,27 @@ Still owed:
 - Faculty auth (later): start with a single-user HTTP-basic or shared token;
   move to real auth if the tool sees multi-user use.
 
-### Phase 5 — Dockerise & deploy
-- Multi-stage `backend/Dockerfile` (builder + slim runtime).
-- `frontend/Dockerfile` — vite build → nginx static.
-- `docker-compose.yml` — api + web + postgres + a named volume for uploads.
-- `.env.example` documenting every knob.
-- One-command bring-up: `docker compose up -d`.
-- Deploy target: user's own server. Document:
-  - Reverse proxy config (Caddy or nginx).
-  - Backup of the postgres volume + `data/uploads/`.
-  - How to update (pull image → `docker compose up -d`).
+### Phase 5 — Dockerise & deploy  ✅ minimal done
+Done:
+- `backend/Dockerfile` — multi-stage Python 3.11-slim (wheel builder
+  → slim runtime, non-root user).
+- `frontend/Dockerfile` — Bun 1.3 builder → nginx:1.27-alpine runtime.
+- `frontend/nginx.conf` — SPA fallback + `/api/*` proxy to the api
+  service with a 20 MB upload cap and long cache for `/assets/`.
+- `docker-compose.yml` — `api` service (unexposed) + `web` service
+  (exposes `${PORT:-80}`) on an internal bridge network. Healthcheck
+  on the API so `web` waits for it.
+- `.env.example` documents `PORT` override.
+- `DEPLOY.md` — step-by-step server bring-up, update, rollback,
+  inspection, and HTTPS-later notes.
+- Verified locally: `docker compose up --build` + end-to-end smoke
+  test of upload through nginx → api returns matching numbers.
+
+Still owed (deferred until needed):
+- Add a postgres service + named volume when Phase 4 (DB) lands.
+- Persistent volume for `data/uploads/` once uploads are retained.
+- Bundle Caddy for auto-HTTPS once a domain exists.
+- CI that builds the images and runs the test suite on PRs.
 
 ---
 
