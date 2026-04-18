@@ -22,7 +22,6 @@ export function QuestionTable({ questions }: Props) {
           <tr>
             <th>Col</th>
             <th>Label</th>
-            <th>Kind</th>
             <th>IA</th>
             <th>CO</th>
             <th>Max</th>
@@ -36,7 +35,6 @@ export function QuestionTable({ questions }: Props) {
             <tr key={q.column_index}>
               <td>{q.column_index}</td>
               <td>{q.label}</td>
-              <td>{q.kind}</td>
               <td>{q.ia_index ?? "—"}</td>
               <td>{q.co_tags.length ? <CoBubbles tags={q.co_tags} /> : "—"}</td>
               <td>{q.max_marks}</td>
