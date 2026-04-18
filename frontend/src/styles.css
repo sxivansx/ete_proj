@@ -267,22 +267,31 @@ td.bad {
   letter-spacing: 0.03em;
 }
 
-.sheet-table .sticky-col {
+.sheet-table .sticky-col:first-child {
   position: sticky;
   left: 0;
   z-index: 3;
   background: var(--panel);
+  min-width: 48px;
 }
 
-.sheet-table thead .sticky-col {
+.sheet-table thead .sticky-col:first-child {
   z-index: 4;
   background: #1e2230;
 }
 
 .sheet-table .col-usn {
+  position: sticky;
   left: 48px;
+  z-index: 3;
+  background: var(--panel);
   min-width: 120px;
   text-align: left;
+}
+
+.sheet-table thead .col-usn {
+  z-index: 4;
+  background: #1e2230;
 }
 
 .sheet-table .col-mark {
@@ -318,8 +327,9 @@ td.bad {
   background: rgba(255, 213, 79, 0.08);
 }
 
-.sheet-table .highlight-row .sticky-col {
-  background: rgba(255, 213, 79, 0.12);
+.sheet-table .highlight-row .sticky-col:first-child,
+.sheet-table .highlight-row .col-usn {
+  background: #1f1d16;
 }
 
 .sheet-table .summary-label {
