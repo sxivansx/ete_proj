@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { uploadWorkbook, type AttainmentResult } from "./api";
 import { Uploader } from "./components/Uploader";
+import { SheetView } from "./components/SheetView";
 import { AttainmentMatrix } from "./components/AttainmentMatrix";
 import { QuestionTable } from "./components/QuestionTable";
 
@@ -74,6 +75,7 @@ export function App() {
             </div>
           </section>
 
+          <SheetView result={result} />
           <AttainmentMatrix result={result} />
           <QuestionTable questions={result.per_question} />
         </>

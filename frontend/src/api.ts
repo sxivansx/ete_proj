@@ -8,6 +8,21 @@ export interface Block {
   mean: number | null;
 }
 
+export interface ColumnHeader {
+  column_index: number;
+  label: string;
+  kind: "question" | "tot" | "test" | "aat" | "final" | "see";
+  ia_index: number | null;
+  max_marks: number;
+  co_tags: number[];
+}
+
+export interface RawStudent {
+  sl_no: number;
+  usn: string;
+  marks: (number | string | null)[];
+}
+
 export interface Question {
   column_index: number;
   label: string;
@@ -27,6 +42,8 @@ export interface AttainmentResult {
     co_numbers: number[];
     ia_indices: number[];
   };
+  columns: ColumnHeader[];
+  raw_students: RawStudent[];
   per_question: Question[];
   ia_blocks: Block[];
   ia_average: Block;
