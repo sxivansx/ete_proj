@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AttainmentResult, Question } from "../api";
+import { CoBubbles } from "./CoBubble";
 
 function fmtMark(v: number | string | null): string {
   if (v == null) return "";
@@ -56,7 +57,7 @@ export function SheetView({ result }: Props) {
               <th className="sticky-col col-usn">CO</th>
               {columns.map((col) => (
                 <th key={col.column_index} className="col-mark co-tag">
-                  {col.co_tags.length > 0 ? col.co_tags.join(",") : ""}
+                  <CoBubbles tags={col.co_tags} />
                 </th>
               ))}
             </tr>

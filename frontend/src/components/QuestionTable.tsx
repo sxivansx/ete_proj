@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Question } from "../api";
+import { CoBubbles } from "./CoBubble";
 
 function fmt(v: number | null): string {
   return v == null ? "—" : v.toFixed(2);
@@ -37,7 +38,7 @@ export function QuestionTable({ questions }: Props) {
               <td>{q.label}</td>
               <td>{q.kind}</td>
               <td>{q.ia_index ?? "—"}</td>
-              <td>{q.co_tags.length ? q.co_tags.join(",") : "—"}</td>
+              <td>{q.co_tags.length ? <CoBubbles tags={q.co_tags} /> : "—"}</td>
               <td>{q.max_marks}</td>
               <td>{q.pass_count}</td>
               <td>{q.attempt_count}</td>
