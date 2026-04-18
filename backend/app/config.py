@@ -28,8 +28,13 @@ DEFAULT_DIRECT_WEIGHT: float = 0.9
 # ---------------------------------------------------------------------------
 
 SHEET_CIE_SEE: str = "CIE+SEE"
+#: Alternative sheet names the parser will accept when the canonical name
+#: is missing (e.g. generic "Sheet1" exports from faculty).
+SHEET_FALLBACKS: tuple[str, ...] = ("Sheet1",)
 
 #: 1-indexed row numbers in the CIE+SEE sheet.
+#: These are *defaults* — the parser auto-detects the actual layout by
+#: scanning for marker cells ("Sl.No", "Q1", "CO's", "Maximum Marks").
 ROW_SECTION_HEADER: int = 4   # "INTERNAL ASSESMENT-1" etc. and special column titles
 ROW_QUESTION_LABEL: int = 5   # "Q1", "Q2", ..., "TEST", "AAT (ASSGN)", "FINAL", "SEE"
 ROW_CO_TAG: int = 6           # CO number(s) per column

@@ -107,19 +107,76 @@ def _classify_column(
 # Public API
 # ---------------------------------------------------------------------------
 
+def _find_sheet(wb) -> str:
+    """Return the name of the CIE+SEE (or equivalent) sheet."""
+    if config.SHEET_CIE_SEE in wb.sheetnames:
+        return config.SHEET_CIE_SEE
+    for name in config.SHEET_FALLBACKS:
+        if name in wb.sheetnames:
+            return name
+    raise ValueError(
+        f"Workbook is missing required sheet "
+        f"{config.SHEET_CIE_SEE!r}; found {wb.sheetnames}"
+    )
+
+
+def _detect_layout(ws) -> dict[str, int]:
+    """Auto-detect key row numbers by scanning for marker cells.
+
+    Returns a dict with keys: question_label, co_tag, max_marks, student_start.
+    """
+    row_question_label = config.ROW_QUESTION_LABEL
+    row_co_tag = config.ROW_CO_TAG
+    row_max_marks = config.ROW_MAX_MARKS
+    row_student_start = config.ROW_STUDENT_START
+
+    scan_limit = min(ws.max_row, 20)
+    for r in range(1, scan_limit + 1):
+        col_b = ws.cell(row=r, column=2).value
+        if col_b is None:
+            continue
+        s = str(col_b).strip().lower()
+        if s in ("question no.", "question no"):
+            row_question_label = r
+        elif s in ("co's", "cos", "co"):
+            row_co_tag = r
+        elif s.startswith("maximum marks") or s.startswith("max marks"):
+            row_max_marks = r
+        elif s in ("usn",):
+            # The header row with "Sl.No" / "USN" — students start next row.
+            row_student_start = r + 1
+
+    # Also check col A for "Sl.No" marker.
+    for r in range(1, scan_limit + 1):
+        col_a = ws.cell(row=r, column=1).value
+        if col_a is not None and str(col_a).strip().lower() in ("sl.no", "sl. no", "sl no"):
+            row_student_start = r + 1
+            break
+
+    return {
+        "question_label": row_question_label,
+        "co_tag": row_co_tag,
+        "max_marks": row_max_marks,
+        "student_start": row_student_start,
+    }
+
+
 def load_course_sheet(path: str | Path) -> CourseSheet:
     """Parse the CIE+SEE sheet of *path* into a :class:`CourseSheet`."""
     path = Path(path)
     wb = load_workbook(path, data_only=True, read_only=False)
-    if config.SHEET_CIE_SEE not in wb.sheetnames:
-        raise ValueError(
-            f"Workbook {path.name!r} is missing required sheet "
-            f"{config.SHEET_CIE_SEE!r}; found {wb.sheetnames}"
-        )
-    ws = wb[config.SHEET_CIE_SEE]
+    sheet_name = _find_sheet(wb)
+    ws = wb[sheet_name]
+
+    # Auto-detect row layout.
+    layout = _detect_layout(ws)
+    row_question_label = layout["question_label"]
+    row_co_tag = layout["co_tag"]
+    row_max_marks = layout["max_marks"]
+    row_student_start = layout["student_start"]
 
     course_name = ""
-    # Row 2 col B in the template holds the subject name.
+    # Try "SUB" label in row 2 col A (canonical template).
     sub_label = ws.cell(row=2, column=1).value
     sub_value = ws.cell(row=2, column=2).value
     if isinstance(sub_label, str) and sub_label.strip().upper() == "SUB" and sub_value:
@@ -132,20 +189,20 @@ def load_course_sheet(path: str | Path) -> CourseSheet:
     last_question_label: str | None = None
 
     for col_idx in range(config.COL_FIRST_QUESTION, ws.max_column + 1):
-        label_cell = ws.cell(row=config.ROW_QUESTION_LABEL, column=col_idx).value
+        label_cell = ws.cell(row=row_question_label, column=col_idx).value
         label = (
             str(label_cell).strip()
             if label_cell is not None and str(label_cell).strip()
             else None
         )
 
-        max_marks_raw = ws.cell(row=config.ROW_MAX_MARKS, column=col_idx).value
+        max_marks_raw = ws.cell(row=row_max_marks, column=col_idx).value
         try:
             max_marks = float(max_marks_raw) if max_marks_raw is not None else 0.0
         except (TypeError, ValueError):
             max_marks = 0.0
 
-        co_tags = _parse_co_tags(ws.cell(row=config.ROW_CO_TAG, column=col_idx).value)
+        co_tags = _parse_co_tags(ws.cell(row=row_co_tag, column=col_idx).value)
 
         kind, ia_index, resolved_label = _classify_column(
             label, max_marks, co_tags, last_question_label, ia_counter,
@@ -167,16 +224,11 @@ def load_course_sheet(path: str | Path) -> CourseSheet:
         ))
 
     # --- Students -------------------------------------------------------------
-    # Student rows have an int in column A (Sl.No). As soon as column A stops
-    # being an int we've hit the summary block ("count >60%", CO mapping
-    # tables, etc.) and must stop — otherwise we'd treat summary rows as
-    # students.
     students: list[StudentRow] = []
-    for row in range(config.ROW_STUDENT_START, ws.max_row + 1):
+    for row in range(row_student_start, ws.max_row + 1):
         sl_no_cell = ws.cell(row=row, column=config.COL_SL_NO).value
         usn_cell = ws.cell(row=row, column=config.COL_USN).value
         if not isinstance(sl_no_cell, (int, float)) or isinstance(sl_no_cell, bool):
-            # Blank row → keep scanning; anything else → we're past the students.
             if sl_no_cell is None and (usn_cell is None or not str(usn_cell).strip()):
                 continue
             break
@@ -184,8 +236,6 @@ def load_course_sheet(path: str | Path) -> CourseSheet:
 
         marks: dict[int, float | None] = {}
         for col in columns:
-            if col.kind == "tot":
-                continue  # derived, we won't need it
             marks[col.index] = _parse_mark(ws.cell(row=row, column=col.index))
         students.append(StudentRow(
             sl_no=sl_no,
