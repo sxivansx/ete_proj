@@ -15,11 +15,25 @@ from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from ..calculator import compute_direct_attainment
 from ..config import CalcConfig
 from ..parser import load_course_sheet
+from ..template import validate as validate_template
 from .serializers import serialize_attainment
+
+
+# Blank template lives next to the sample workbook. ``GET /api/v1/template``
+# streams it; ``backend/scripts/build_template.py`` regenerates it from the
+# canonical sample.
+BLANK_TEMPLATE_PATH = (
+    Path(__file__).resolve().parents[2] / "samples" / "template_v1.xlsx"
+)
+TEMPLATE_DOWNLOAD_NAME = "ete_co_attainment_template_v1.xlsx"
+XLSX_MEDIA_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 
 
 app = FastAPI(title="CO Attainment API", version="0.1.0")
@@ -43,6 +57,24 @@ app.add_middleware(
 @app.get("/api/v1/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/v1/template")
+def template() -> FileResponse:
+    """Serve the blank canonical template so faculty can download-and-fill."""
+    if not BLANK_TEMPLATE_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Blank template has not been built. Run "
+                "`python backend/scripts/build_template.py`."
+            ),
+        )
+    return FileResponse(
+        BLANK_TEMPLATE_PATH,
+        filename=TEMPLATE_DOWNLOAD_NAME,
+        media_type=XLSX_MEDIA_TYPE,
+    )
 
 
 @app.post("/api/v1/upload")
@@ -77,11 +109,31 @@ async def upload(
         tmp_path = Path(tmp.name)
 
     try:
+        # Run the template validator first. Any non-empty result means the
+        # workbook doesn't match the canonical layout — surface every
+        # violation so the UI can show the user exactly which cells to fix.
+        violations = validate_template(tmp_path)
+        if violations:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "template_violations",
+                    "message": (
+                        f"Workbook does not match the canonical template "
+                        f"({len(violations)} issue"
+                        f"{'s' if len(violations) != 1 else ''})."
+                    ),
+                    "violations": [v.to_dict() for v in violations],
+                },
+            )
+
         sheet = load_course_sheet(tmp_path)
         result = compute_direct_attainment(sheet, cfg)
+    except HTTPException:
+        raise
     except ValueError as exc:
-        # Template contract violation — surfaced as a 422 so the UI can
-        # display the reason prominently.
+        # Parser-level failure that the validator didn't catch — still a
+        # template-contract issue from the user's perspective.
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:  # defensive: the parser shouldn't blow up
         traceback.print_exc()
