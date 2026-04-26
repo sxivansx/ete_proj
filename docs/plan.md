@@ -149,6 +149,214 @@ defer this to Phase 2.
 
 ---
 
+## Architecture
+
+Four views of the same system, each focused on a different audience: the
+end-to-end request path, the backend data-shape pipeline, the frontend
+component tree, and the deploy pipeline.
+
+### 1. End-to-end request path (production)
+
+Faculty uploads an `.xlsx` from their browser; the JSON payload comes back
+through Caddy → nginx → FastAPI → openpyxl. Two Docker containers (`web`,
+`api`) run on an internal bridge network; only `web` is reachable from
+the host, and Caddy on the host terminates TLS.
+
+```
+         ┌─────────────────────────────────────────────────────────┐
+         │   Faculty browser  ──  https://ete.gitwall.space         │
+         │   • drag .xlsx onto Uploader                             │
+         │   • sees CO-attainment dashboard + indirect blend        │
+         └──────────────────────────┬──────────────────────────────┘
+                                    │ HTTPS (TLS 1.3)
+                                    ▼
+         ┌─────────────────────────────────────────────────────────┐
+         │   Caddy on host  (ports 80, 443)                        │
+         │   • Let's Encrypt auto-renew                            │
+         │   • reverse_proxy ete.gitwall.space → localhost:8080    │
+         └──────────────────────────┬──────────────────────────────┘
+                                    │ plain HTTP, host loopback
+                                    ▼
+         ┌─────────────────────────────────────────────────────────┐
+         │   web container   nginx:1.27-alpine     (compose: web)  │
+         │   • serves built React SPA from /usr/share/nginx/html   │
+         │   • SPA fallback for client-side routing                │
+         │   • client_max_body_size 20m                            │
+         │   • location /api/* → proxy_pass http://api:8000        │
+         └──────────────────────────┬──────────────────────────────┘
+                                    │ docker bridge "internal"
+                                    │ POST /api/v1/upload (multipart)
+                                    ▼
+         ┌─────────────────────────────────────────────────────────┐
+         │   api container   FastAPI + uvicorn :8000  (compose: api)
+         │   • non-root user, Python 3.11-slim                     │
+         │   • healthcheck on GET /api/v1/health                   │
+         │   • parses xlsx in memory (no disk write)               │
+         │   • returns full attainment payload as JSON             │
+         └─────────────────────────────────────────────────────────┘
+```
+
+### 2. Backend module flow — data-shape pipeline
+
+Inside the `api` container the request walks a strict pipeline. Each stage
+has a single responsibility and a single output type; the calculator is
+pure (no I/O), so it's the only place where attainment math lives.
+
+```
+  HTTP multipart .xlsx
+        │
+        ▼
+  ┌──────────────────────────────────────────┐
+  │  app/api/main.py                         │  POST /api/v1/upload
+  │  • validates content-type / size         │
+  │  • reads bytes into RAM                  │
+  │  • optional ?pass_fraction= ?cie_weight= │
+  └──────────────────┬───────────────────────┘
+                     │ bytes + CalcConfig
+                     ▼
+  ┌──────────────────────────────────────────┐
+  │  app/parser.py     load_course_sheet()   │
+  │  • openpyxl read-only mode               │
+  │  • auto-detect CIE+SEE sheet by markers  │
+  │  • row 5 = labels, row 6 = CO tags,      │
+  │    row 7 = max marks                     │
+  │  • rows 10..N = students (stop on first  │
+  │    non-int Sl.No)                        │
+  │  • CO tag parser: "2", "2,3", "1 3",     │
+  │    "CO 1 2 3 4"  →  [int]                │
+  └──────────────────┬───────────────────────┘
+                     │ CourseSheet (frozen dataclass)
+                     │  ├─ Column[]      label, co_tags, max_marks, kind
+                     │  └─ StudentRow[]  sl_no, usn, marks per col
+                     ▼
+  ┌──────────────────────────────────────────┐
+  │  app/calculator.py    (pure functions)   │
+  │  question_stats()   → per Q: pass / attempted / pct
+  │  ia_co_attainment() → per IA per CO: pooled mean of Q pcts
+  │  aat_co_attainment()→ AAT broadcast over its CO tags
+  │  cie_co_attainment()→ mean(IA_avg, AAT) per CO
+  │  see_co_attainment()→ SEE pct broadcast to every CO
+  │  direct_attainment()→ 0.6·CIE + 0.4·SEE per CO
+  └──────────────────┬───────────────────────┘
+                     │ AttainmentResult
+                     ▼
+  ┌──────────────────────────────────────────┐
+  │  app/api/serializers.py                  │
+  │  dataclass → dict (with raw sheet view)  │
+  └──────────────────┬───────────────────────┘
+                     │ JSON response
+                     ▼
+   { course, columns, students, per_question, per_co, direct, sheet_view }
+```
+
+### 3. Frontend component tree
+
+The SPA is a single page; state lives in `App.tsx` and flows down through
+props. There are no global stores yet — the JSON payload from `/api/v1/upload`
+is the single source of truth.
+
+```
+  App.tsx                              [state: result | error | loading]
+   │
+   ├─ Uploader.tsx
+   │     drag/drop .xlsx → fetch POST /api/v1/upload (multipart)
+   │     on success ─► setResult(json)
+   │
+   ├─ SheetView.tsx
+   │     full grid of student marks, header CO bubbles colored per CO
+   │     summary rows: count ≥60%, count attended, CO attainment
+   │
+   ├─ AttainmentMatrix.tsx
+   │     two tables matching Excel:
+   │       • CIE CO-Attainment   (IA1, IA2, IA3, IA avg, AAT, CIE)
+   │       • Direct CO-Attainment (CIE, SEE, Direct)
+   │     cells ≥60% green, <60% red
+   │
+   ├─ QuestionTable.tsx
+   │     per-question breakdown (CO bubbles, pass/attempted/pct)
+   │     paginated, default 12 rows + expand button
+   │
+   └─ IndirectAttainment.tsx
+         per-CO inputs: SA / A / D response counts
+         shows: indirect pct, then 0.9·direct + 0.1·indirect
+         │
+         └─ lib/indirectFormula.ts        (pure, unit-tested)
+              SCALE_WEIGHTS = { sa: 3, a: 2, d: 1 }
+              A = Σ(Nₛ·Wₛ) / (N·3)         in [0, 100]
+
+  src/api.ts        fetch wrapper + TS types mirroring backend JSON
+  src/styles.css    design tokens — --bg, --text, --accent, --panel-border
+```
+
+### 4. Deploy pipeline — local commit to live URL
+
+Push to `main` triggers GitHub Actions, which SSHes into the droplet and
+runs `docker compose up -d --build`. Caddy reloads automatically when the
+domain config changes; the host nginx is disabled so Caddy owns 80/443.
+
+```
+   developer laptop
+        │ git push origin main
+        ▼
+   ┌─────────────────────────────────────────────────────┐
+   │  GitHub — sxivansx/ete_proj                         │
+   │  .github/workflows/deploy.yml                       │
+   │    on: push → branches: [main]                      │
+   │    secrets: SERVER_HOST, SERVER_USER, SERVER_SSH_KEY│
+   └────────────────────────┬────────────────────────────┘
+                            │ ssh -i $SERVER_SSH_KEY
+                            ▼
+   ┌─────────────────────────────────────────────────────┐
+   │  DigitalOcean droplet  64.227.137.223  (root)       │
+   │    cd /root/ete-proj                                │
+   │    git pull --ff-only                               │
+   │    docker compose up -d --build                     │
+   └────────────────────────┬────────────────────────────┘
+                            │ rebuilds web + api images
+                            ▼
+        ┌───────────────────┐         ┌───────────────────┐
+        │  web container    │◄───────►│  api container    │
+        │  nginx:alpine     │ docker  │  FastAPI/uvicorn  │
+        │  host:8080 → 80   │ bridge  │  unexposed :8000  │
+        └─────────┬─────────┘         └───────────────────┘
+                  │ host loopback :8080
+                  ▼
+   ┌─────────────────────────────────────────────────────┐
+   │  Caddy on host (systemd)  ports 80, 443             │
+   │    ete.gitwall.space {                              │
+   │       reverse_proxy localhost:8080                  │
+   │    }                                                │
+   │  • Let's Encrypt cert auto-issue + auto-renew       │
+   └────────────────────────┬────────────────────────────┘
+                            │ HTTPS
+                            ▼
+   ┌─────────────────────────────────────────────────────┐
+   │  Hostinger DNS                                      │
+   │    A   ete.gitwall.space   →   64.227.137.223       │
+   └─────────────────────────────────────────────────────┘
+                            ▲
+                            │ https://ete.gitwall.space
+   faculty browser ─────────┘
+```
+
+### Key invariants the diagrams encode
+
+- **The calculator never touches I/O.** `calculator.py` only sees
+  `CourseSheet` in, numbers out. Every other module sits *around* it.
+- **The frontend never re-implements attainment math.** It receives the
+  computed payload and renders. The lone exception is
+  `lib/indirectFormula.ts`, which is purely about the survey blend and
+  has its own unit tests.
+- **The api container is unreachable from the public internet.** Only
+  `web` exposes a port on the docker host; only Caddy exposes ports on
+  the public internet.
+- **Recompute, don't trust.** Even though the source xlsx already has
+  computed cells (`CO-Attainment`, `PO-Attainment`), the parser ignores
+  them and the calculator recomputes from scratch — this is what lets us
+  catch the known faculty-template bug on `C4`.
+
+---
+
 ## Phased roadmap
 
 Each phase must be runnable end-to-end on its own before we start the next.
