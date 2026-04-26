@@ -218,6 +218,115 @@ td.bad {
   font-size: 12px;
 }
 
+.indirect-input {
+  width: 80px;
+  padding: 4px 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.indirect-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.matrix .final-cell {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.formula-card {
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 0 0 18px;
+}
+.formula-title {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.formula-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: "Cambria Math", "Times New Roman", serif;
+  font-size: 22px;
+  margin-bottom: 14px;
+}
+.formula-lhs {
+  font-style: italic;
+}
+.formula-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+.formula-num,
+.formula-den {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+.formula-bar {
+  width: 100%;
+  height: 1.5px;
+  background: var(--text);
+  margin: 4px 0;
+}
+.formula-sigma {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 6px;
+  line-height: 1;
+}
+.formula-sigma-top,
+.formula-sigma-bot {
+  font-size: 11px;
+  color: var(--muted);
+}
+.formula-sigma-glyph {
+  font-size: 26px;
+  line-height: 0.9;
+}
+.formula-term {
+  font-style: italic;
+}
+.formula-term sub {
+  font-size: 0.65em;
+  font-style: normal;
+}
+.formula-den {
+  font-style: italic;
+}
+.formula-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.formula-legend li {
+  margin: 2px 0;
+}
+.formula-legend b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+
 .link {
   background: none;
   border: none;

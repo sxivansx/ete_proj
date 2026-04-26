@@ -3,6 +3,7 @@ import { uploadWorkbook, type AttainmentResult } from "./api";
 import { Uploader } from "./components/Uploader";
 import { SheetView } from "./components/SheetView";
 import { AttainmentMatrix } from "./components/AttainmentMatrix";
+import { IndirectAttainment } from "./components/IndirectAttainment";
 
 export function App() {
   const [result, setResult] = useState<AttainmentResult | null>(null);
@@ -76,6 +77,10 @@ export function App() {
 
           <SheetView result={result} />
           <AttainmentMatrix result={result} />
+          <IndirectAttainment
+            cos={result.course.co_numbers}
+            direct={result.direct}
+          />
         </>
       )}
     </div>
