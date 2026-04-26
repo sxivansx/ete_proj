@@ -4,7 +4,7 @@ Every function here takes a parsed :class:`CourseSheet` (plus an optional
 :class:`CalcConfig`) and returns numbers. No I/O, no state.
 
 The math mirrors the faculty's CIE+SEE / CO-Attainment sheets exactly —
-see ``plan.md`` for the derivations.
+see ``docs/plan.md`` for the derivations.
 """
 from __future__ import annotations
 
