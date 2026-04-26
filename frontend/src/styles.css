@@ -98,6 +98,69 @@ header .subtitle {
   padding: 14px 16px;
   color: var(--text);
 }
+.error-message {
+  margin: 6px 0 12px;
+  font-size: 14px;
+}
+.violation-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 13px;
+  margin: 6px 0 10px;
+}
+.violation-table th,
+.violation-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--panel-border);
+  vertical-align: top;
+}
+.violation-table tr:last-child td {
+  border-bottom: none;
+}
+.violation-table th {
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.violation-cell {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--bad);
+  white-space: nowrap;
+}
+.violation-code code {
+  background: var(--panel);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--text);
+}
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.template-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  text-align: center;
+}
+.template-hint a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.template-hint a:hover {
+  text-decoration: none;
+}
 .error pre {
   margin: 8px 0 0;
   white-space: pre-wrap;

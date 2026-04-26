@@ -2,6 +2,25 @@
 //
 // Via Vite's dev proxy (see vite.config.ts), /api/* hits http://localhost:8000.
 
+/** One structural problem reported by the template validator. */
+export interface TemplateViolation {
+  code: string;
+  message: string;
+  row?: number;
+  col?: number;
+  cell?: string;
+}
+
+/** Thrown when the backend returns 422 with a list of template violations. */
+export class TemplateValidationError extends Error {
+  violations: TemplateViolation[];
+  constructor(message: string, violations: TemplateViolation[]) {
+    super(message);
+    this.name = "TemplateValidationError";
+    this.violations = violations;
+  }
+}
+
 export interface Block {
   label: string;
   per_co: Record<string, number | null>;
@@ -71,14 +90,28 @@ export async function uploadWorkbook(
   const resp = await fetch(url.toString(), { method: "POST", body: form });
   if (!resp.ok) {
     const text = await resp.text();
-    let detail = text;
+    let parsed: unknown = null;
     try {
-      const parsed = JSON.parse(text);
-      if (parsed.detail) detail = parsed.detail;
+      parsed = JSON.parse(text);
     } catch {
-      // keep raw text
+      throw new Error(`${resp.status}: ${text}`);
     }
-    throw new Error(`${resp.status}: ${detail}`);
+    // Structured 422 from the template validator:
+    //   { detail: { error: "template_violations", message, violations: [...] } }
+    const detail = (parsed as { detail?: unknown })?.detail;
+    if (
+      detail &&
+      typeof detail === "object" &&
+      (detail as { error?: string }).error === "template_violations"
+    ) {
+      const d = detail as {
+        message: string;
+        violations: TemplateViolation[];
+      };
+      throw new TemplateValidationError(d.message, d.violations);
+    }
+    const flat = typeof detail === "string" ? detail : JSON.stringify(detail);
+    throw new Error(`${resp.status}: ${flat}`);
   }
   return resp.json();
 }

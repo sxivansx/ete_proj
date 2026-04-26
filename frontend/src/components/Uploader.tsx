@@ -25,31 +25,40 @@ export function Uploader({ onFile, busy }: Props) {
   }
 
   return (
-    <div
-      className={`dropzone ${dragging ? "dragging" : ""} ${busy ? "busy" : ""}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={onDrop}
-      onClick={() => inputRef.current?.click()}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".xlsx"
-        hidden
-        onChange={(e) => acceptFile(e.target.files?.[0])}
-      />
-      {busy ? (
-        <p>Calculating…</p>
-      ) : (
-        <>
-          <p className="main">Drop a .xlsx here</p>
-          <p className="hint">or click to choose a file</p>
-        </>
-      )}
+    <div className="upload-area">
+      <div
+        className={`dropzone ${dragging ? "dragging" : ""} ${busy ? "busy" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => inputRef.current?.click()}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".xlsx"
+          hidden
+          onChange={(e) => acceptFile(e.target.files?.[0])}
+        />
+        {busy ? (
+          <p>Calculating…</p>
+        ) : (
+          <>
+            <p className="main">Drop a .xlsx here</p>
+            <p className="hint">or click to choose a file</p>
+          </>
+        )}
+      </div>
+      <p className="template-hint">
+        First time?{" "}
+        <a href="/api/v1/template" download>
+          Download the blank template
+        </a>{" "}
+        to make sure your workbook matches the expected layout.
+      </p>
     </div>
   );
 }
